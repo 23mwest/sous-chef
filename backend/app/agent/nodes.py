@@ -5,7 +5,7 @@ from app.agent.prompts import (
     ALLERGEN_DISCLAIMER,
     HEALTH_CONDITION_KEYWORDS,
     RECIPE_KEYWORDS,
-    format_system_prompt,
+    SYSTEM_PROMPT_TEMPLATE,
 )
 from app.agent.state import AgentState
 from app.agent.tools import web_search
@@ -49,27 +49,24 @@ def off_topic_node(state: AgentState) -> dict:
 
 
 def chef_node(state: AgentState) -> dict:
+    api_key = state.get("api_token_override") or settings.anthropic_api_key
+
     llm = ChatAnthropic(
         model=settings.model_name,
-        anthropic_api_key=settings.anthropic_api_key,
+        anthropic_api_key=api_key,
         max_tokens=1024,
     ).bind_tools([web_search])
 
     messages = list(state["messages"])
 
-    # Inject system prompt with pantry context if not already present
     if not messages or not isinstance(messages[0], SystemMessage):
         system_msg = SystemMessage(
-            content=format_system_prompt([], [])  # pantry_context pre-formatted upstream
-        )
-        # Replace with the pre-formatted context stored in state
-        if state.get("pantry_context"):
-            from app.agent.prompts import SYSTEM_PROMPT_TEMPLATE
-            system_msg = SystemMessage(
-                content=SYSTEM_PROMPT_TEMPLATE.format(
-                    pantry_context=state["pantry_context"]
-                )
+            content=SYSTEM_PROMPT_TEMPLATE.format(
+                pantry_context=state.get("pantry_context")
+                or "The user hasn't added anything to their pantry yet.",
+                preferences_context=state.get("preferences_context", ""),
             )
+        )
         messages = [system_msg] + messages
 
     response = llm.invoke(messages)

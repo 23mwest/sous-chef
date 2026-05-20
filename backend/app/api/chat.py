@@ -3,7 +3,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
 from app.agent.graph import agent
-from app.agent.prompts import build_pantry_context
+from app.agent.prompts import build_pantry_context, build_preferences_context
 from app.agent.state import AgentState
 
 router = APIRouter()
@@ -14,6 +14,12 @@ class PantryPayload(BaseModel):
     cookware: list[str] = []
 
 
+class PreferencesPayload(BaseModel):
+    api_token: str = ""
+    allergies: list[str] = []
+    principles: str = ""
+
+
 class MessagePayload(BaseModel):
     role: str
     content: str
@@ -22,6 +28,7 @@ class MessagePayload(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[MessagePayload]
     pantry: PantryPayload
+    preferences: PreferencesPayload = PreferencesPayload()
 
 
 class ChatResponse(BaseModel):
@@ -43,9 +50,16 @@ async def chat(request: ChatRequest):
         request.pantry.cookware,
     )
 
+    preferences_context = build_preferences_context(
+        request.preferences.allergies,
+        request.preferences.principles,
+    )
+
     initial_state: AgentState = {
         "messages": lc_messages,
         "pantry_context": pantry_context,
+        "preferences_context": preferences_context,
+        "api_token_override": request.preferences.api_token.strip(),
         "is_food_related": False,
         "tool_calls_made": [],
     }

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { postChat } from "@/lib/api";
 import { usePantry } from "@/hooks/usePantry";
+import { usePreferences } from "@/hooks/usePreferences";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +24,7 @@ const WELCOME: Message = {
 
 export function ChatPage() {
   const { pantry } = usePantry();
+  const { preferences } = usePreferences();
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -57,6 +59,7 @@ export function ChatPage() {
       const res = await postChat({
         messages: next.filter((m) => m.role !== "assistant" || m !== WELCOME),
         pantry,
+        preferences,
       });
       setMessages([...next, { role: "assistant", content: res.message }]);
       setLastUsedSearch(res.used_search);

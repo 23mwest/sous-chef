@@ -23,6 +23,8 @@ When suggesting recipes, check the pantry list above. If a recipe needs somethin
 list, say so clearly and either offer a workaround using what they have, or suggest an \
 alternative recipe that fits.
 
+{preferences_context}
+
 LEGAL REQUIREMENTS (non-negotiable):
 - If a user mentions a medical condition or asks for diet advice tied to a health condition, \
 briefly acknowledge it and tell them to consult a healthcare professional. Then move on to what \
@@ -76,6 +78,64 @@ def build_pantry_context(ingredients: list[str], cookware: list[str]) -> str:
     return "\n".join(parts)
 
 
-def format_system_prompt(ingredients: list[str], cookware: list[str]) -> str:
+def build_preferences_context(allergies: list[str], principles: str) -> str:
+    sections: list[str] = []
+
+    if allergies:
+        allergy_list = ", ".join(allergies)
+        sections.append(
+            "ALLERGIES (HARD CONSTRAINTS, non-negotiable):\n"
+            f"The user is allergic to: {allergy_list}.\n"
+            "- Never recommend, mention as edible, or include any recipe, ingredient, "
+            "dish, or preparation that contains any of these allergens.\n"
+            "- Apply the allergy to ALL forms of the allergen, including derivatives, "
+            "byproducts, and dishes that conventionally contain it. Examples: a wheat "
+            "allergy excludes bread, pasta, flour, soy sauce (which contains wheat), "
+            "seitan, couscous, and most baked goods. A shellfish allergy excludes "
+            "shrimp, prawns, crab, lobster, crawfish, oysters, mussels, clams, and "
+            "scallops. A milk allergy excludes butter, cheese, cream, yogurt, ghee, "
+            "and whey. A tree nuts allergy excludes almonds, cashews, pecans, "
+            "walnuts, pistachios, hazelnuts, and macadamia nuts.\n"
+            "- If a recipe you would otherwise recommend contains an allergen, do NOT "
+            "discard the recipe. Substitute the allergen with a safe alternative and "
+            "name it explicitly in the recipe. For example, if the user is allergic "
+            "to wheat and the recipe calls for bread, write 'gluten-free bread' "
+            "instead. If the recipe calls for milk and the user is allergic to milk, "
+            "write 'oat milk' or another non-dairy alternative. If no safe "
+            "substitution exists, only then pick a different recipe.\n"
+            "- Briefly note the substitution you made so the user knows you adapted "
+            "for their allergy."
+        )
+
+    principles = (principles or "").strip()
+    if principles:
+        sections.append(
+            "GUIDING PRINCIPLES (soft preferences):\n"
+            "The user has provided the following guidance. Reflect these in your "
+            "recommendations, but they are not strict requirements. You must satisfy "
+            "at least 50% of the points the user has stated. If any point cannot be "
+            "satisfied, briefly call out which one and why at the end of your "
+            "response.\n"
+            "---\n"
+            f"{principles}\n"
+            "---"
+        )
+
+    if not sections:
+        return ""
+
+    return "\n\n".join(sections)
+
+
+def format_system_prompt(
+    ingredients: list[str],
+    cookware: list[str],
+    allergies: list[str] | None = None,
+    principles: str = "",
+) -> str:
     pantry_context = build_pantry_context(ingredients, cookware)
-    return SYSTEM_PROMPT_TEMPLATE.format(pantry_context=pantry_context)
+    preferences_context = build_preferences_context(allergies or [], principles)
+    return SYSTEM_PROMPT_TEMPLATE.format(
+        pantry_context=pantry_context,
+        preferences_context=preferences_context,
+    )

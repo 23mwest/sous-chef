@@ -8,9 +8,16 @@ export interface Pantry {
   cookware: string[];
 }
 
+export interface Preferences {
+  apiToken: string;
+  allergies: string[];
+  principles: string;
+}
+
 export interface ChatRequest {
   messages: Message[];
   pantry: Pantry;
+  preferences: Preferences;
 }
 
 export interface ChatResponse {

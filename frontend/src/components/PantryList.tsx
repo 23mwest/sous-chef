@@ -9,20 +9,40 @@ interface Props {
   onRemove: (item: string) => void;
   placeholder?: string;
   suggestions?: string[];
+  quickAdds?: string[];
+  emptyText?: string;
 }
 
-export function PantryList({ title, items, onAdd, onRemove, placeholder, suggestions = [] }: Props) {
+export function PantryList({
+  title,
+  items,
+  onAdd,
+  onRemove,
+  placeholder,
+  suggestions = [],
+  quickAdds,
+  emptyText,
+}: Props) {
   const [draft, setDraft] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const itemsLower = new Set(items.map((i) => i.toLowerCase()));
+  const isAdded = (s: string) => itemsLower.has(s.toLowerCase());
+
+  const dropdownPool = quickAdds
+    ? Array.from(new Set([...quickAdds, ...suggestions]))
+    : suggestions;
+
   const filteredSuggestions = draft.length > 0
-    ? suggestions
-        .filter(s => s.toLowerCase().includes(draft.toLowerCase()) && !items.includes(s))
+    ? dropdownPool
+        .filter((s) => s.toLowerCase().includes(draft.toLowerCase()) && !isAdded(s))
         .slice(0, 6)
     : [];
 
-  const quickSuggestions = suggestions.filter(s => !items.includes(s)).slice(0, 6);
+  const quickSuggestions = quickAdds
+    ? quickAdds.filter((s) => !isAdded(s))
+    : suggestions.filter((s) => !isAdded(s)).slice(0, 6);
 
   const addItem = (value: string) => {
     const trimmed = value.trim();
@@ -97,7 +117,9 @@ export function PantryList({ title, items, onAdd, onRemove, placeholder, suggest
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Nothing added yet.</p>
+        <p className="text-sm text-muted-foreground italic">
+          {emptyText ?? "Nothing added yet."}
+        </p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {items.map((item) => (
