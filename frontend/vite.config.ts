@@ -11,8 +11,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/chat": "http://localhost:8000",
-      "/health": "http://localhost:8000",
+      "/chat": process.env.BACKEND_URL ?? "http://localhost:8000",
+      "/health": process.env.BACKEND_URL ?? "http://localhost:8000",
     },
+    watch: process.env.VITE_USE_POLLING
+      ? { usePolling: true, interval: 300 }
+      : undefined,
   },
 });
