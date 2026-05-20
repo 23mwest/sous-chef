@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChefHat, UtensilsCrossed, Globe } from "lucide-react";
+import {
+  ChefHat,
+  UtensilsCrossed,
+  Globe,
+  Menu,
+  Settings,
+  BookOpen,
+} from "lucide-react";
 import { postChat } from "@/lib/api";
 import { usePantry } from "@/hooks/usePantry";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -10,7 +17,8 @@ import type { Message } from "@/lib/types";
 
 const WELCOME: Message = {
   role: "assistant",
-  content: "What are we cooking? Tell me what you're in the mood for, or I can work from your pantry.",
+  content:
+    "What are we cooking? Tell me what you're in the mood for, or I can work from your pantry.",
 };
 
 export function ChatPage() {
@@ -19,7 +27,19 @@ export function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastUsedSearch, setLastUsedSearch] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,7 +61,9 @@ export function ChatPage() {
       setMessages([...next, { role: "assistant", content: res.message }]);
       setLastUsedSearch(res.used_search);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      setError(
+        err instanceof Error ? err.message : "Something went wrong. Try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -55,14 +77,42 @@ export function ChatPage() {
           <ChefHat className="h-5 w-5 text-primary" />
           <span className="font-semibold text-sm">SousChef</span>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to="/pantry"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
+            aria-label="Open menu"
           >
-            <UtensilsCrossed className="h-4 w-4" />
-            Pantry
-          </Link>
+            <Menu className="h-5 w-5" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-background border rounded-lg shadow-lg py-1 min-w-[140px] z-10">
+              <Link
+                to="/pantry"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <UtensilsCrossed className="h-4 w-4" />
+                Pantry
+              </Link>
+              <Link
+                to="/recipes"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <BookOpen className="h-4 w-4" />
+                Recipes
+              </Link>
+              <Link
+                to="/preferences"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                Preferences
+              </Link>
+            </div>
+          )}
         </div>
       </header>
 
@@ -85,9 +135,7 @@ export function ChatPage() {
               Searched the web
             </div>
           )}
-          {error && (
-            <p className="text-xs text-destructive px-1">{error}</p>
-          )}
+          {error && <p className="text-xs text-destructive px-1">{error}</p>}
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
