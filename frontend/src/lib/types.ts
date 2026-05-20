@@ -24,3 +24,10 @@ export interface ChatResponse {
   message: string;
   used_search: boolean;
 }
+
+export interface SavedRecipe {
+  id: string;
+  name: string;
+  content: string;
+  savedAt: string;
+}
