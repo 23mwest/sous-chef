@@ -55,6 +55,12 @@ export function ChatPage() {
     setError("");
     setLastUsedSearch(false);
 
+    if (!preferences.apiToken.trim()) {
+      setError("Add a Claude API key in Preferences");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await postChat({
         messages: next.filter((m) => m.role !== "assistant" || m !== WELCOME),

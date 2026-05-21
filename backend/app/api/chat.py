@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from app.agent.graph import agent
 from app.agent.prompts import build_pantry_context, build_preferences_context
 from app.agent.state import AgentState
+from app.config import settings
 
 router = APIRouter()
 
@@ -63,6 +64,10 @@ async def chat(request: ChatRequest):
         "is_food_related": False,
         "tool_calls_made": [],
     }
+
+    api_key = request.preferences.api_token.strip() or settings.anthropic_api_key
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Add a Claude API key in Preferences")
 
     try:
         result = await agent.ainvoke(initial_state, config={"recursion_limit": 10})
