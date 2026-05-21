@@ -1,5 +1,5 @@
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.agent.prompts import (
     ALLERGEN_DISCLAIMER,
@@ -11,20 +11,14 @@ from app.agent.state import AgentState
 from app.agent.tools import web_search
 from app.config import settings
 
-FOOD_KEYWORDS = {
-    "cook", "recipe", "ingredient", "food", "eat", "meal", "dish", "kitchen",
-    "bake", "fry", "grill", "roast", "boil", "simmer", "sauté", "chop",
-    "dinner", "lunch", "breakfast", "snack", "dessert", "appetizer",
-    "flavor", "taste", "spice", "herb", "sauce", "dressing", "marinade",
-    "vegetable", "fruit", "meat", "chicken", "beef", "pork", "fish", "shrimp",
-    "pasta", "rice", "bread", "cheese", "egg", "butter", "oil", "vinegar",
-    "wine", "beer", "cocktail", "drink", "beverage", "restaurant", "chef",
-    "cuisine", "diet", "nutrition", "calorie", "protein", "carb", "fat",
-    "vegan", "vegetarian", "gluten", "allergy", "pantry", "fridge", "oven",
-    "pan", "pot", "knife", "cutting board", "grocery", "shopping",
-    "what to make", "what can i", "what should i", "how do i make",
-    "how to cook", "how to bake", "how long", "temperature", "preheat",
-}
+ROUTER_SYSTEM_PROMPT = (
+    "You are a classifier for a cooking assistant. "
+    "Does the user's message reference food, a dish, a drink, an ingredient, cooking, a meal, "
+    "or anything edible in any way? Be very inclusive: if someone names any food, drink, or dish "
+    "(even casually, e.g. 'I want an omelette', 'pizza', 'something sweet'), that counts. "
+    "When in doubt, answer yes. "
+    "Reply with only the single word 'yes' or 'no'."
+)
 
 OFF_TOPIC_RESPONSE = (
     "That's outside what I can help with. I'm a cooking assistant, so food, "
@@ -37,10 +31,23 @@ def router_node(state: AgentState) -> dict:
     last_user_msg = ""
     for msg in reversed(state["messages"]):
         if hasattr(msg, "type") and msg.type == "human":
-            last_user_msg = msg.content.lower()
+            last_user_msg = msg.content
             break
 
-    is_food = any(kw in last_user_msg for kw in FOOD_KEYWORDS)
+    if not last_user_msg.strip():
+        return {"is_food_related": False}
+
+    api_key = state.get("api_token_override") or settings.anthropic_api_key
+    llm = ChatAnthropic(
+        model=settings.model_name,
+        anthropic_api_key=api_key,
+        max_tokens=5,
+    )
+    result = llm.invoke([
+        SystemMessage(content=ROUTER_SYSTEM_PROMPT),
+        HumanMessage(content=last_user_msg),
+    ])
+    is_food = result.content.strip().lower().startswith("yes")
     return {"is_food_related": is_food}
 
 
